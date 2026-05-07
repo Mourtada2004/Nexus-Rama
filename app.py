@@ -729,56 +729,47 @@ def page_agents():
 # GESTION SERVICES
 # ============================================================
 def page_services():
+   def page_services():
     render_header()
     st.markdown("## 🏢 Gestion des Services")
     st.markdown('<hr class="orange-sep">', unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["📋 Liste des services", "➕ Nouveau service"])
+    # Formulaire d'ajout
+    with st.expander("➕ Créer un nouveau service"):
+        with st.form("form_service"):
+            nom = st.text_input("Nom du service")
+            desc = st.text_area("Description")
+            if st.form_submit_button("Enregistrer"):
+                if nom:
+                    execute_query("INSERT INTO Service (nom_service, description) VALUES (?,?)", (nom, desc))
+                    st.success("Service créé !")
+                    st.rerun()
 
-    with tab1:
-        services = fetch_all("""
-            SELECT s.*,
-                   ch.prenom || ' ' || ch.nom AS chef_nom
-            FROM Service s
-            LEFT JOIN Agent ch ON ch.id_service=s.id_service AND ch.niveau_hierarchique='Chef de service'
-            GROUP BY s.id_service
-            ORDER BY s.nom_service
-        """)
+    # Liste des services avec bouton de suppression
+    services = fetch_all("SELECT * FROM Service")
+    
+    if not services:
+        st.info("Aucun service créé pour le moment.")
+    else:
         for svc in services:
-            nb_agents = fetch_one("SELECT COUNT(*) FROM Agent WHERE id_service=?", (svc["id_service"],))[0]
-            nb_act = fetch_one("SELECT COUNT(*) FROM Activite WHERE id_service=?", (svc["id_service"],))[0]
-            st.markdown(f"""
-            <div class="nexus-card">
-                <div class="nexus-card-title">🏢 {svc['nom_service']}</div>
-                <div class="nexus-card-sub">
-                    👤 Chef : {svc['chef_nom'] or '—'} &nbsp;|&nbsp;
-                    👥 {nb_agents} agents &nbsp;|&nbsp;
-                    📋 {nb_act} activités
+            with st.container():
+                # Affichage du design orange
+                st.markdown(f"""
+                <div class="nexus-card">
+                    <div class="nexus-card-title">🏢 {svc['nom_service']} (ID: {svc['id_service']})</div>
+                    <div class="nexus-card-sub">{svc['description'] if svc['description'] else 'Aucune description'}</div>
                 </div>
-                {f"<div class='nexus-card-sub' style='margin-top:6px;color:#555;'>{svc['description']}</div>" if svc['description'] else ""}
-            </div>
-            """, unsafe_allow_html=True)
-            # Bouton pour supprimer les doublons
-        if st.button(f"Supprimer {service['nom_service']} (ID: {service['id_service']})", key=f"del_{service['id_service']}"):
-            try:
-                execute_query("DELETE FROM Service WHERE id_service = ?", (service['id_service'],))
-                st.success("Service supprimé !")
-                st.rerun()
-            except:
-                st.error("Impossible de supprimer : ce service est déjà utilisé par des agents.")
-
-    with tab2:
-        st.markdown("### ➕ Créer un service")
-        nom_svc = st.text_input("Nom du service *")
-        desc_svc = st.text_area("Description")
-        if st.button("✅ Créer le service", use_container_width=True):
-            if not nom_svc:
-                st.error("Le nom est obligatoire.")
-            else:
-                execute_query("INSERT INTO Service (nom_service, description) VALUES (?, ?)", (nom_svc, desc_svc))
-                st.success(f"Service « {nom_svc} » créé !")
-                st.rerun()
-
+                """, unsafe_allow_html=True)
+                
+                # LE BOUTON SUPPRIMER (Bien visible en dessous de la carte)
+                if st.button(f"🗑️ Supprimer l'unité {svc['id_service']}", key=f"btn_del_{svc['id_service']}"):
+                    try:
+                        execute_query("DELETE FROM Service WHERE id_service = ?", (svc['id_service'],))
+                        st.success(f"Service {svc['nom_service']} supprimé !")
+                        st.rerun()
+                    except:
+                        st.error("Action impossible : des agents sont encore liés à ce service.")
+                st.markdown("<br>", unsafe_allow_html=True)
 # ============================================================
 # GESTION ACTIVITÉS
 # ============================================================
