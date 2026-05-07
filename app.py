@@ -638,28 +638,15 @@ def page_dashboard():
 # ============================================================
 def page_agents():
     render_header()
-    agent = st.session_state.agent
-    niveau = agent["niveau_hierarchique"]
     st.markdown("## 👥 Gestion des Agents")
     st.markdown('<hr class="orange-sep">', unsafe_allow_html=True)
+    
+    agent_connecte = st.session_state.agent
+    niveau_user = agent_connecte['niveau_hierarchique']
 
-    tab1, tab2 = st.tabs(["📋 Liste des agents", "➕ Ajouter un agent"])
-
-    with tab1:
-        agents = fetch_all("""
-            SELECT a.*, s.nom_service,
-                   ch.prenom || ' ' || ch.nom AS chef_nom
-            FROM Agent a
-            LEFT JOIN Service s ON a.id_service=s.id_service
-            LEFT JOIN Agent ch ON a.id_agent_chef=ch.id_agent
-            ORDER BY a.niveau_hierarchique, a.nom
-        """)
-        for ag in agents:
-           with st.expander("➕ Ajouter un nouvel agent"):
-        agent_connecte = st.session_state.agent
-        niveau_user = agent_connecte['niveau_hierarchique']
-
-        # 1. Définition des rôles autorisés (Logique N+1)
+    # --- 1. FORMULAIRE D'AJOUT (HIÉRARCHIE N+1) ---
+    with st.expander("➕ Ajouter un nouvel agent"):
+        # Définition des rôles selon qui est connecté
         if niveau_user == "PDG":
             roles_autorises = ["Directeur General"]
         elif niveau_user == "Directeur General":
@@ -670,42 +657,76 @@ def page_agents():
             roles_autorises = []
 
         if not roles_autorises:
-            st.warning("Vous n'avez pas l'autorisation de créer des agents.")
+            st.warning("Votre rang ne vous permet pas de créer de nouveaux agents.")
         else:
-            with st.form("form_nouvel_agent"):
+            with st.form("form_agent"):
                 col1, col2 = st.columns(2)
                 with col1:
                     nom = st.text_input("Nom")
                     prenom = st.text_input("Prénom")
-                    mail = st.text_input("Email (identifiant)")
-                
+                    mail = st.text_input("Email (Identifiant)")
                 with col2:
-                    # Ici on utilise la liste restreinte
-                    nouveau_niveau = st.selectbox("Niveau Hiérarchique", roles_autorises)
-                    password = st.text_input("Mot de passe", type="password")
+                    role_selectionne = st.selectbox("Rang à attribuer", roles_autorises)
+                    mdp = st.text_input("Mot de passe", type="password")
                     
-                    # Gestion automatique du service
+                    # Si c'est un Chef de service, on le bloque sur son propre service
                     if niveau_user == "Chef de service":
-                        id_service_select = agent_connecte['id_service']
-                        st.info(f"Assigné automatiquement à votre service.")
+                        id_service_final = agent_connecte['id_service']
+                        st.info(f"Service : {agent_connecte['id_service']} (Automatique)")
                     else:
-                        services = fetch_all("SELECT id_service, nom_service FROM Service")
-                        id_service_select = st.selectbox("Assigner à un service", 
-                                                        [s['id_service'] for s in services],
-                                                        format_func=lambda x: next(s['nom_service'] for s in services if s['id_service'] == x))
+                        liste_services = fetch_all("SELECT id_service, nom_service FROM Service")
+                        if liste_services:
+                            id_service_final = st.selectbox(
+                                "Assigner à un service", 
+                                [s['id_service'] for s in liste_services],
+                                format_func=lambda x: next(s['nom_service'] for s in liste_services if s['id_service'] == x)
+                            )
+                        else:
+                            id_service_final = None
+                            st.error("Créez d'abord un service avant d'ajouter un agent.")
 
                 if st.form_submit_button("Créer l'agent"):
-                    if nom and prenom and mail and password:
+                    if nom and prenom and mail and mdp and id_service_final:
                         try:
                             execute_query("""
                                 INSERT INTO Agent (nom, prenom, mail, niveau_hierarchique, mot_de_passe, id_service, statut)
                                 VALUES (?, ?, ?, ?, ?, ?, 'actif')
-                            """, (nom, prenom, mail, nouveau_niveau, hash_password(password), id_service_select))
-                            st.success(f"Agent {prenom} créé avec succès !")
+                            """, (nom, prenom, mail, role_selectionne, hash_password(mdp), id_service_final))
+                            st.success(f"L'agent {prenom} {nom} a été ajouté !")
                             st.rerun()
                         except:
-                            st.error("Erreur : cet email est déjà utilisé.")
-# ============================================================
+                            st.error("Erreur : cet email existe déjà.")
+
+    st.markdown("---")
+
+    # --- 2. LISTE DES AGENTS (VISIBILITÉ) ---
+    st.markdown("### 📋 Liste du personnel")
+    
+    if niveau_user == "PDG":
+        # Le PDG voit tout le monde dans l'entreprise
+        agents = fetch_all("""
+            SELECT A.*, S.nom_service 
+            FROM Agent A 
+            LEFT JOIN Service S ON A.id_service = S.id_service
+        """)
+    elif niveau_user == "Chef de service":
+        # Le chef ne voit que les gens de son propre service
+        agents = fetch_all("""
+            SELECT A.*, S.nom_service 
+            FROM Agent A 
+            LEFT JOIN Service S ON A.id_service = S.id_service 
+            WHERE A.id_service = ?
+        """, (agent_connecte['id_service'],))
+    else:
+        # Les autres voient uniquement leur propre fiche ou rien
+        agents = [agent_connecte]
+
+    if agents:
+        for a in agents:
+            with st.container():
+                st.write(f"**{a['nom']} {a['prenom']}** - {a['niveau_hierarchique']}")
+                st.caption(f"Email: {a['mail']} | Service: {a.get('nom_service', 'N/A')}")
+                st.markdown("---") ==========================================
 # GESTION SERVICES
 # ============================================================
 def page_services():
