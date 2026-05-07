@@ -729,7 +729,7 @@ def page_agents():
 # GESTION SERVICES
 # ============================================================
 def page_services():
-   def page_services():
+   
     render_header()
     st.markdown("## 🏢 Gestion des Services")
     st.markdown('<hr class="orange-sep">', unsafe_allow_html=True)
