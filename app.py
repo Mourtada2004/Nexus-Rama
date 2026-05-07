@@ -524,7 +524,7 @@ def get_menu_items(niveau):
     
     elif niveau == "Chef de service":
         # Le Chef gère ses Opérants et ses Tâches
-        return ["🏠 Tableau de Bord", "👥 Mes Opérants", "🗂️ Tâches", "📊 Opérations", "🔔 Notifications"]
+        return ["🏠 Tableau de Bord", "👥Gestion Agents ", "🗂️ Tâches", "📊 Opérations", "🔔 Notifications"]
     
     else: # Operant
         return ["🏠 Tableau de Bord", "🗂️ Mes Tâches", "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements"]
