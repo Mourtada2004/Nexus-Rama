@@ -726,7 +726,7 @@ def page_agents():
             with st.container():
                 st.write(f"**{a['nom']} {a['prenom']}** - {a['niveau_hierarchique']}")
                 st.caption(f"Email: {a['mail']} | Service: {a.get('nom_service', 'N/A')}")
-                st.markdown("---") ==========================================
+                st.markdown("---") 
 # GESTION SERVICES
 # ============================================================
 def page_services():
