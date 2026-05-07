@@ -239,7 +239,7 @@ def init_db():
     c.executescript("""
     CREATE TABLE IF NOT EXISTS Service (
         id_service   INTEGER PRIMARY KEY AUTOINCREMENT,
-        nom_service  VARCHAR(100) NOT NULL,
+        nom_service  VARCHAR(100) NOT NULL UNIQUE,
         description  TEXT
     );
 
@@ -758,6 +758,14 @@ def page_services():
                 {f"<div class='nexus-card-sub' style='margin-top:6px;color:#555;'>{svc['description']}</div>" if svc['description'] else ""}
             </div>
             """, unsafe_allow_html=True)
+            # Bouton pour supprimer les doublons
+        if st.button(f"Supprimer {service['nom_service']} (ID: {service['id_service']})", key=f"del_{service['id_service']}"):
+            try:
+                execute_query("DELETE FROM Service WHERE id_service = ?", (service['id_service'],))
+                st.success("Service supprimé !")
+                st.rerun()
+            except:
+                st.error("Impossible de supprimer : ce service est déjà utilisé par des agents.")
 
     with tab2:
         st.markdown("### ➕ Créer un service")
