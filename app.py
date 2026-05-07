@@ -655,76 +655,56 @@ def page_agents():
             ORDER BY a.niveau_hierarchique, a.nom
         """)
         for ag in agents:
-            with st.expander(f"👤 {ag['prenom']} {ag['nom']} — {ag['niveau_hierarchique']}"):
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.markdown(f"**Email :** {ag['mail']}")
-                    st.markdown(f"**Tél :** {ag['numero_telephone'] or '—'}")
-                    st.markdown(f"**Service :** {ag['nom_service'] or '—'}")
-                with c2:
-                    st.markdown(f"**Statut :** {ag['statut']}", unsafe_allow_html=True)
-                    st.markdown(f"**Chef direct :** {ag['chef_nom'] or '—'}")
-                    st.markdown(f"**Directeur :** {'Oui' if ag['est_directeur'] else 'Non'}")
+           with st.expander("➕ Ajouter un nouvel agent"):
+        agent_connecte = st.session_state.agent
+        niveau_user = agent_connecte['niveau_hierarchique']
 
-                # Modifier statut
-                if niveau in ("PDG", "Directeur General"):
-                    new_statut = st.selectbox("Changer statut", ["actif", "pause", "inactif"],
-                                              index=["actif", "pause", "inactif"].index(ag["statut"]),
-                                              key=f"statut_{ag['id_agent']}")
-                    if st.button("💾 Mettre à jour", key=f"upd_{ag['id_agent']}"):
-                        execute_query("UPDATE Agent SET statut=? WHERE id_agent=?", (new_statut, ag["id_agent"]))
-                        st.success("Statut mis à jour.")
-                        st.rerun()
+        # 1. Définition des rôles autorisés (Logique N+1)
+        if niveau_user == "PDG":
+            roles_autorises = ["Directeur General"]
+        elif niveau_user == "Directeur General":
+            roles_autorises = ["Chef de service"]
+        elif niveau_user == "Chef de service":
+            roles_autorises = ["Operant"]
+        else:
+            roles_autorises = []
 
-    with tab2:
-        st.markdown("### ➕ Créer un nouvel agent")
-        services = fetch_all("SELECT * FROM Service ORDER BY nom_service")
-        agents_chefs = fetch_all("SELECT * FROM Agent WHERE niveau_hierarchique IN ('PDG','Directeur General','Chef de service') ORDER BY nom")
+        if not roles_autorises:
+            st.warning("Vous n'avez pas l'autorisation de créer des agents.")
+        else:
+            with st.form("form_nouvel_agent"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    nom = st.text_input("Nom")
+                    prenom = st.text_input("Prénom")
+                    mail = st.text_input("Email (identifiant)")
+                
+                with col2:
+                    # Ici on utilise la liste restreinte
+                    nouveau_niveau = st.selectbox("Niveau Hiérarchique", roles_autorises)
+                    password = st.text_input("Mot de passe", type="password")
+                    
+                    # Gestion automatique du service
+                    if niveau_user == "Chef de service":
+                        id_service_select = agent_connecte['id_service']
+                        st.info(f"Assigné automatiquement à votre service.")
+                    else:
+                        services = fetch_all("SELECT id_service, nom_service FROM Service")
+                        id_service_select = st.selectbox("Assigner à un service", 
+                                                        [s['id_service'] for s in services],
+                                                        format_func=lambda x: next(s['nom_service'] for s in services if s['id_service'] == x))
 
-        c1, c2 = st.columns(2)
-        with c1:
-            nom    = st.text_input("Nom *")
-            prenom = st.text_input("Prénom *")
-            mail   = st.text_input("Email *")
-            telephone = st.text_input("Téléphone")
-        with c2:
-            niveaux = ["Directeur General", "Chef de service", "Operant"]
-            if niveau == "PDG":
-                niveaux = ["PDG"] + niveaux
-            niveau_new = st.selectbox("Niveau hiérarchique *", niveaux)
-            mdp = st.text_input("Mot de passe *", type="password")
-            est_dir = st.checkbox("Est directeur de service ?")
-            service_names = ["— Aucun —"] + [s["nom_service"] for s in services]
-            sel_service = st.selectbox("Service", service_names)
-            chef_names = ["— Aucun —"] + [f"{a['prenom']} {a['nom']}" for a in agents_chefs]
-            sel_chef = st.selectbox("Agent chef (N+1)", chef_names)
-
-        if st.button("✅ Créer l'agent", use_container_width=True):
-            if not nom or not prenom or not mail or not mdp:
-                st.error("Champs obligatoires manquants.")
-            else:
-                id_service_new = None
-                if sel_service != "— Aucun —":
-                    idx = service_names.index(sel_service) - 1
-                    id_service_new = services[idx]["id_service"]
-                id_chef_new = None
-                if sel_chef != "— Aucun —":
-                    idx = chef_names.index(sel_chef) - 1
-                    id_chef_new = agents_chefs[idx]["id_agent"]
-                try:
-                    execute_query("""
-                        INSERT INTO Agent (nom, prenom, niveau_hierarchique, mail,
-                                          numero_telephone, est_directeur, id_service,
-                                          id_agent_chef, mot_de_passe)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (nom.upper(), prenom, niveau_new, mail,
-                          telephone, 1 if est_dir else 0,
-                          id_service_new, id_chef_new, hash_password(mdp)))
-                    st.success(f"✅ Agent {prenom} {nom} créé avec succès !")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erreur : {e}")
-
+                if st.form_submit_button("Créer l'agent"):
+                    if nom and prenom and mail and password:
+                        try:
+                            execute_query("""
+                                INSERT INTO Agent (nom, prenom, mail, niveau_hierarchique, mot_de_passe, id_service, statut)
+                                VALUES (?, ?, ?, ?, ?, ?, 'actif')
+                            """, (nom, prenom, mail, nouveau_niveau, hash_password(password), id_service_select))
+                            st.success(f"Agent {prenom} créé avec succès !")
+                            st.rerun()
+                        except:
+                            st.error("Erreur : cet email est déjà utilisé.")
 # ============================================================
 # GESTION SERVICES
 # ============================================================
