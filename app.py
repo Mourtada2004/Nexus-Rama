@@ -513,21 +513,21 @@ def render_header():
 # SIDEBAR NAVIGATION
 # ============================================================
 def get_menu_items(niveau):
-    base = ["🏠 Tableau de Bord", "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements", "⭐ Avis"]
+   
     if niveau == "PDG":
-        return ["🏠 Tableau de Bord", "👥 Gestion Agents", "🏢 Services",
-                "📋 Activités", "🗂️ Tâches", "📊 Opérations",
-                "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements", "⭐ Avis"]
+        # Le PDG ne gère que les Directeurs, les Services et les Activités
+        return ["🏠 Tableau de Bord", "👥 Gestion Agents", "🏢 Services", "📋 Activités", "📊 Opérations", "🔔 Notifications"]
+    
     elif niveau == "Directeur General":
-        return ["🏠 Tableau de Bord", "👥 Gestion Agents", "🏢 Services",
-                "📋 Activités", "🗂️ Tâches", "📊 Opérations",
-                "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements", "⭐ Avis"]
+        # Le DG gère les Chefs de Service
+        return ["🏠 Tableau de Bord", "👥 Gestion Agents", "📋 Activités", "📊 Opérations", "🔔 Notifications"]
+    
     elif niveau == "Chef de service":
-        return ["🏠 Tableau de Bord", "🗂️ Tâches", "📊 Opérations",
-                "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements", "⭐ Avis"]
-    else:  # Operant
-        return ["🏠 Tableau de Bord", "🗂️ Mes Tâches", "🔔 Notifications",
-                "💡 Boîte à Idées", "⚠️ Signalements", "⭐ Avis"]
+        # Le Chef gère ses Opérants et ses Tâches
+        return ["🏠 Tableau de Bord", "👥 Mes Opérants", "🗂️ Tâches", "📊 Opérations", "🔔 Notifications"]
+    
+    else: # Operant
+        return ["🏠 Tableau de Bord", "🗂️ Mes Tâches", "🔔 Notifications", "💡 Boîte à Idées", "⚠️ Signalements"]
 
 # ============================================================
 # TABLEAU DE BORD
