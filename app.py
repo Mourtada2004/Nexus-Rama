@@ -95,18 +95,20 @@ h3 { color: var(--mid) !important; font-size: 1.3rem !important; }
 }
 
 /* Inputs */
+/* Correction pour rendre le texte bien visible en noir */
 .stTextInput > div > div > input,
 .stSelectbox > div > div,
 .stTextArea textarea {
-    border: 2px solid #DDD !important;
-    border-radius: 4px !important;
-    background: var(--white) !important;
-    transition: border-color 0.2s;
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    border: 2px solid #FF7900 !important; /* Bordure orange pour le style */
+    -webkit-text-fill-color: #000000 !important;
 }
-.stTextInput > div > div > input:focus,
-.stTextArea textarea:focus {
-    border-color: var(--orange) !important;
-    box-shadow: 0 0 0 2px rgba(255,121,0,0.15) !important;
+
+/* Texte des labels (noms des champs) en noir */
+label[data-testid="stWidgetLabel"] p {
+    color: #000000 !important;
+    font-weight: bold !important;
 }
 
 /* Métriques */
@@ -377,7 +379,7 @@ def init_db():
         c.execute("""
             INSERT INTO Agent (nom, prenom, niveau_hierarchique, mail, statut, est_directeur, mot_de_passe)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, ("ADMIN", "PDG", "PDG", "pdg@nexus.sn", "actif", 1, hash_password("nexus123")))
+        """, ("PAPA", "DIOP", "PDG", "pdg@nexus.sn", "actif", 1, hash_password("nexus123")))
 
     conn.commit()
     conn.close()
